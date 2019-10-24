@@ -1,17 +1,21 @@
 package scanner;
 
-import parser.*;
+
 import scanner.let_lang_scanner.Token;
 
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
+import environment.Environment;
+
+import java.util.regex.Matcher;
+import expval.*;
+import parser.letrec_parser;
 
 public class let_lang_scanner {
-	static Hashtable<String,Integer> PreEnv  = new Hashtable<String, Integer>();
+	static Environment PreEnv = new Environment();
     public static enum TokenType {
     	LPAREN("\\("),
     	RPAREN("\\)"),
@@ -20,11 +24,13 @@ public class let_lang_scanner {
     	PLUS("\\+"),
     	ASSIGN("="),
     	PROC("proc"),
-    	ISZERO("iszero"),
+    	ISZERO("zero?"),
     	IF("if"),
     	THEN("then"),
     	ELSE("else"),
+    	LETREC("letrec"),
     	LET("let"),
+    	
     	IN("in"),
     	//might be wrong
     	IDENTIFIER("[a-z]"),
@@ -100,6 +106,9 @@ public class let_lang_scanner {
             }else if (matcher.group().matches(TokenType.IF.pattern)) {
                 tokens.add(new Token(TokenType.IF, matcher.group()));
                 continue;
+            }else if (matcher.group().matches(TokenType.LETREC.pattern)) {
+                tokens.add(new Token(TokenType.LETREC, matcher.group()));
+                continue;
             }else if (matcher.group().matches(TokenType.PROC.pattern)) {
                 tokens.add(new Token(TokenType.PROC, matcher.group()));
                 continue;
@@ -133,32 +142,42 @@ public class let_lang_scanner {
         return tokens;
     }
     
-    public static void applyEnv(String s, Integer i) {
+    public static void applyEnv(String s, NumVal i) {
     	String ins=s;
-    	Integer ii = i;
+    	NumVal ii = i;
     	
-    	PreEnv.put(s, ii);
+    	PreEnv.extendEnv(ins, ii);
     	
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args)throws Exception {
     	String input1	 = "let x =7 in let y = 2 in let y = let x = -(x,1) in -(x,y) in -(-(x,8),y)";
-    	String input2 	 = "if iszero(-(x,11)) then -(y,2) else -(y,4)";
-    	String input3    = "let y = 5 in -(y,3)";
+    	String input2 	 = "if zero?(-(9,9)) then 4 else 3";
+    	String input3    = "let y = -(9,1) in -(y,3)";
     	String input4    = "let x = 5 in let y = let x = -(x,1) in -(x,4)";
     	String input5    = "let x = iszero(1) in +(7,x)";
-    	String input6	 = "let x = 200 in let f = proc (z) -(z,x) in let x 100 "
-    							+ "in let g = proc (z) -(z,x) in -((f 1), (g 1))";
-    	String input7    = "let x = 200 in let f = proc(z) -(z,x) in let t = (f 350)";
-        ArrayList<Token> tokens = lex(input1);
+    	String input6	 = "let x = 100 in let f = proc (z) -(z,x) in let x = 200 "
+    							+ "in let g = proc (z) -(z,x) in -((f 1),(g 1))";
+    	String input7    = "let x = 200 in let f = proc(z) -(z,x) in (f (f (f 3)))";
+    	String input8    = "let x = 200 in let f = proc(z) -(z,x) in let x = 5000 in (f 3)";
+    	String input9	 = "letrec double(x) = if zero?(x) "
+    											+ "then 0 "
+    											+ "else -((double -(x,1)), -(0,2)) in (double 40)";
+    	
+    	
+    	String input = input6;
+    	
+    	
+        ArrayList<Token> tokens = lex(input);
         
        /* applyEnv("x",32);
         applyEnv("y",22);
 */
         LinkedList<Token> lltok = new LinkedList<Token>();
         lltok.addAll(tokens);
+        System.out.println(input);
+        letrec_parser parse_tokens = new letrec_parser(lltok); 
         
-        let_lang_parser<Integer> parse_tokens = new let_lang_parser<Integer>(lltok, PreEnv); 
         
     }
     
